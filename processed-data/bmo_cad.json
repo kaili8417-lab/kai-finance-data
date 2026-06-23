@@ -1,0 +1,8 @@
+[
+ {"date":"2026-04-20","acct":"bmo","cat":"服饰装扮","amount":558.60,"note":"Lululemon (PayPal)"},
+ {"date":"2026-04-27","acct":"bmo","cat":"其他","amount":16.00,"note":"BMO 电汇手续费"},
+ {"date":"2026-04-30","acct":"bmo","cat":"其他","amount":17.95,"note":"BMO 账户月费"},
+ {"date":"2026-05-04","acct":"bmo","cat":"其他","amount":181.50,"note":"FS RES BC STRTA (杂费)"},
+ {"date":"2026-05-04","acct":"bmo","cat":"酒店旅游","amount":464.20,"note":"NZ ATM 取现(旅游)"},
+ {"date":"2026-05-11","acct":"bmo","cat":"酒店旅游","amount":448.47,"note":"HK ATM 取现(旅游)"}
+]
