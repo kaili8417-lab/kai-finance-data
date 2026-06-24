@@ -7,5 +7,5 @@
  {"date":"2026-04-01","src":"工资","amount":5000,"cur":"CNY","note":"月工资(人民币)"},
  {"date":"2026-05-01","src":"工资","amount":5000,"cur":"CNY","note":"月工资(人民币)"},
  {"date":"2026-06-01","src":"工资","amount":5000,"cur":"CNY","note":"月工资(人民币)"},
- {"date":"2026-05-19","src":"租金收入","amount":2000.61,"cur":"CAD","note":"OnePlus Property Manage 租金 · 10607 73 AVE NW"}
+ {"date":"2026-05-19","src":"租金收入","amount":2000.61,"cur":"CAD","prop":"p1","note":"OnePlus Property Manage 租金 · 10607 73 AVE NW"}
 ]
