@@ -203,6 +203,32 @@
   .hidden{display:none!important}
 </style>
 
+<style>
+  #lockScreen{position:fixed;inset:0;z-index:99999;background:var(--paper,#F1EFE9);display:flex;align-items:center;justify-content:center;padding:24px;font-family:'Inter',system-ui,sans-serif}
+  #lockScreen .lockcard{width:100%;max-width:320px;background:var(--card,#fff);border:1px solid var(--line,#E2DED4);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:30px 24px;text-align:center}
+  #lockScreen .locklogo{width:76px;height:76px;border-radius:18px;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+  #lockScreen .locktitle{font-weight:700;font-size:19px;margin:14px 0 2px;color:var(--ink,#211F1D)}
+  #lockScreen .lockmsg{font-size:13px;color:var(--ink-soft,#6E6962);margin-bottom:18px}
+  #lockScreen .lockbtn{display:block;width:100%;box-sizing:border-box;border:none;border-radius:13px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;background:var(--ink,#211F1D);color:#fff}
+  #lockScreen .lockbtn.ghost{background:transparent;border:1px solid var(--line,#E2DED4);color:var(--ink,#211F1D)}
+  #lockScreen .lockbtn:disabled{opacity:.55}
+  #lockScreen .lockinput{width:100%;box-sizing:border-box;text-align:center;letter-spacing:6px;font-size:18px;padding:12px;margin-top:14px;border:1px solid var(--line,#E2DED4);border-radius:13px;background:var(--paper,#F7F5EF)}
+  #lockScreen .lockhint{font-size:12px;color:var(--rmb-ink,#8A3527);min-height:16px;margin-top:12px}
+  #lockScreen .lockreset{margin-top:16px;background:none;border:none;color:var(--ink-faint,#9A958C);font-size:11.5px;text-decoration:underline;cursor:pointer}
+</style>
+<div id="lockScreen">
+  <div class="lockcard">
+    <img src="apple-touch-icon.png" class="locklogo" alt="logo" />
+    <div class="locktitle">kai记账</div>
+    <div class="lockmsg" id="lockMsg">已锁定</div>
+    <button class="lockbtn" id="faceBtn">用 Face ID 解锁</button>
+    <input class="lockinput" id="pinInput" type="password" inputmode="numeric" maxlength="6" placeholder="PIN" />
+    <button class="lockbtn ghost" id="pinBtn">PIN 解锁</button>
+    <div class="lockhint" id="lockHint"></div>
+    <button class="lockreset" id="resetLock">重置锁屏</button>
+  </div>
+</div>
+
 <div class="wrap">
   <div class="top">
     <div class="brand">
@@ -871,7 +897,81 @@ function clearAll(){
 }
 
 /* ============================ 启动 ============================ */
+/* ============================ 锁屏(Face ID + PIN 软锁) ============================ */
+const LOCK_KEY='lock:v1';
+const b64u={
+  enc:b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  dec:s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}
+};
+function lockGet(){try{return JSON.parse(localStorage.getItem(LOCK_KEY))||{}}catch(e){return{}}}
+function lockSet(c){try{localStorage.setItem(LOCK_KEY,JSON.stringify(c));}catch(e){}}
+function lockRand(n){const u=new Uint8Array(n);crypto.getRandomValues(u);return u;}
+async function lockSha(s){const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return b64u.enc(d);}
+async function lockEnrollFace(){
+  const cred=await navigator.credentials.create({publicKey:{
+    challenge:lockRand(32), rp:{name:'kai记账'},
+    user:{id:lockRand(16),name:'kai',displayName:'kai记账'},
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},
+    timeout:60000, attestation:'none'
+  }});
+  return b64u.enc(cred.rawId);
+}
+async function lockVerifyFace(credId){
+  await navigator.credentials.get({publicKey:{
+    challenge:lockRand(32),
+    allowCredentials:[{type:'public-key',id:b64u.dec(credId),transports:['internal']}],
+    userVerification:'required', timeout:60000
+  }});
+  return true;
+}
+function lockReveal(){const ls=document.getElementById('lockScreen');if(ls)ls.remove();}
+function initLock(){
+  const ls=document.getElementById('lockScreen'); if(!ls) return;
+  const msg=document.getElementById('lockMsg'), hint=document.getElementById('lockHint');
+  const faceBtn=document.getElementById('faceBtn'), pinInput=document.getElementById('pinInput'), pinBtn=document.getElementById('pinBtn'), reset=document.getElementById('resetLock');
+  const cfg=lockGet();
+  const hasWebAuthn = !!(window.PublicKeyCredential) && location.protocol==='https:';
+  reset.onclick=()=>{ if(confirm('重置锁屏?将清除 PIN 与 Face ID 设置。')){ localStorage.removeItem(LOCK_KEY); location.reload(); } };
+  pinInput.addEventListener('keydown',e=>{ if(e.key==='Enter') pinBtn.click(); });
+
+  if(!cfg.pinHash){ // 首次设置
+    msg.textContent='首次设置 · 请设置 PIN';
+    hint.textContent='设置 4–6 位数字 PIN，作为解锁与备用方式';
+    faceBtn.textContent='启用 Face ID（可选）';
+    pinBtn.textContent='保存 PIN 并启用';
+    if(!hasWebAuthn) faceBtn.style.display='none';
+    let pendingCred=null;
+    faceBtn.onclick=async()=>{
+      try{ pendingCred=await lockEnrollFace(); faceBtn.textContent='✓ Face ID 已启用'; faceBtn.disabled=true; hint.textContent=''; }
+      catch(e){ hint.textContent='Face ID 启用被取消，可只用 PIN'; }
+    };
+    pinBtn.onclick=async()=>{
+      const p=(pinInput.value||'').trim();
+      if(!/^\d{4,6}$/.test(p)){ hint.textContent='PIN 需为 4–6 位数字'; return; }
+      const c={pinHash:await lockSha(p)};
+      if(pendingCred) c.credId=pendingCred;
+      lockSet(c); lockReveal();
+    };
+  } else { // 解锁
+    msg.textContent='已锁定 · 请验证';
+    pinBtn.textContent='PIN 解锁';
+    if(!cfg.credId || !hasWebAuthn){ faceBtn.style.display='none'; }
+    faceBtn.onclick=async()=>{
+      hint.textContent='';
+      try{ await lockVerifyFace(cfg.credId); lockReveal(); }
+      catch(e){ hint.textContent='Face ID 验证失败或取消，可用 PIN'; }
+    };
+    pinBtn.onclick=async()=>{
+      const p=(pinInput.value||'').trim();
+      if(await lockSha(p)===cfg.pinHash){ lockReveal(); }
+      else{ hint.textContent='PIN 不正确'; pinInput.value=''; }
+    };
+  }
+}
+
 (async function init(){
+  initLock();
   try{
     await loadRemoteData();              // 始终优先从 GitHub 拉取最新数据
   }catch(e){
