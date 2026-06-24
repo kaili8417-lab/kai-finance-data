@@ -331,22 +331,10 @@
     <div class="sectionhead">
       <div>
         <h2>不动产明细</h2>
-        <p class="hint" style="margin:2px 0 0">每处物业单独记账，各自小计并折算加币</p>
+        <p class="hint" style="margin:2px 0 0">每处物业当月收支一览，各自小计并折算加币</p>
       </div>
       <div class="barbtns">
         <span class="num" id="propGrand" style="font-size:13px;color:var(--ink-soft)"></span>
-        <button class="btn" id="addPropBtn">+ 新增不动产</button>
-      </div>
-    </div>
-    <div class="panel hidden" id="newPropPanel">
-      <h3>新增不动产</h3>
-      <p class="hint">给物业命名并选择记账币种</p>
-      <div class="miniform" style="grid-template-columns:repeat(3,1fr)">
-        <input id="npName" placeholder="名称，如：成都·锦江公寓" />
-        <input id="npLoc" placeholder="位置 / 备注（可选）" />
-        <select id="npCur"><option value="CNY">主币种：人民币 ¥</option><option value="CAD">主币种：加币 $</option></select>
-        <button class="btn primary" id="npSave" style="grid-column:span 1">保存</button>
-        <button class="btn ghost" id="npCancel">取消</button>
       </div>
     </div>
     <div class="props" id="propList"></div>
@@ -751,19 +739,9 @@ function renderProperty(){
           <span class="pd">${e.date.slice(5)}</span>
           <span class="pc">${e.cat}${e.note?` · ${e.note}`:''}</span>
           <span class="pa">${money(e.amount,e.cur,true)}</span>
-          <button class="del" data-delprop="${p.id}" data-delexp="${e.id}">×</button>
         </div>`).join(''):'<div class="empty" style="padding:18px">本月无记录</div>'}
       </div>
       <div style="font-size:11.5px;color:var(--ink-faint);font-family:var(--font-num)">本月原币：${ownStr} · 累计 ${money(totAll,'CAD',false)}</div>
-      <div class="miniform">
-        <input type="date" data-pf="date" data-pid="${p.id}" value="${todayISO()}" />
-        <select data-pf="cat" data-pid="${p.id}">${PROP_CATS.map(c=>`<option>${c}</option>`).join('')}</select>
-        <input type="number" step="0.01" data-pf="amt" data-pid="${p.id}" placeholder="金额" style="font-family:var(--font-num)" />
-        <select data-pf="cur" data-pid="${p.id}"><option value="${p.cur}">${p.cur==='CNY'?'¥ 人民币':'$ 加币'}</option><option value="${p.cur==='CNY'?'CAD':'CNY'}">${p.cur==='CNY'?'$ 加币':'¥ 人民币'}</option></select>
-        <input class="full" data-pf="note" data-pid="${p.id}" placeholder="备注（可选）" />
-        <button class="btn primary full" data-addexp="${p.id}">+ 记一笔物业支出</button>
-        <button class="btn ghost full" data-delpropall="${p.id}" style="color:var(--ink-faint)">删除此不动产</button>
-      </div>
     </div>`;
   }).join('');
   document.getElementById('propGrand').textContent=monthLabel(selectedMonth)+' 不动产 '+money(grandMonth,'CAD',false)+' · 累计 '+money(grandAll,'CAD',false);
@@ -810,21 +788,10 @@ function bind(){
   document.getElementById('exportBtn').addEventListener('click',exportCSV);
   document.getElementById('clearDemoBtn').addEventListener('click',clearDemo);
   document.getElementById('clearAllBtn').addEventListener('click',clearAll);
-  // property add
-  document.getElementById('addPropBtn').addEventListener('click',()=>document.getElementById('newPropPanel').classList.toggle('hidden'));
-  document.getElementById('npCancel').addEventListener('click',()=>document.getElementById('newPropPanel').classList.add('hidden'));
-  document.getElementById('npSave').addEventListener('click',addProp);
-
-  // delegated: deletes + property expense adds
+  // delegated: 普通流水删除(明细页)
   document.body.addEventListener('click',e=>{
     const del=e.target.closest('[data-del]');
     if(del){STATE.transactions=STATE.transactions.filter(t=>t.id!==del.dataset.del);saveState();render();return;}
-    const ax=e.target.closest('[data-addexp]');
-    if(ax){addPropExp(ax.dataset.addexp);return;}
-    const de=e.target.closest('[data-delexp]');
-    if(de){const p=STATE.properties.find(x=>x.id===de.dataset.delprop);if(p){p.exp=p.exp.filter(x=>x.id!==de.dataset.delexp);saveState();render();}return;}
-    const dpa=e.target.closest('[data-delpropall]');
-    if(dpa){if(confirm('删除这处不动产及其全部记录？')){STATE.properties=STATE.properties.filter(x=>x.id!==dpa.dataset.delpropall);saveState();render();}return;}
   });
 }
 function stepMonth(dir){
@@ -848,23 +815,6 @@ function addTxn(){
   STATE.transactions.push({id:uid(),type:'expense',date,acct,cat,amount,note});
   document.getElementById('fAmt').value='';document.getElementById('fNote').value='';
   selectedMonth=monthKey(date);
-  saveState();render();
-}
-
-function addProp(){
-  const name=document.getElementById('npName').value.trim();
-  if(!name){document.getElementById('npName').focus();return;}
-  STATE.properties.push({id:uid(),name,loc:document.getElementById('npLoc').value.trim(),cur:document.getElementById('npCur').value,exp:[]});
-  document.getElementById('npName').value='';document.getElementById('npLoc').value='';
-  document.getElementById('newPropPanel').classList.add('hidden');
-  saveState();render();
-}
-function addPropExp(pid){
-  const p=STATE.properties.find(x=>x.id===pid);if(!p)return;
-  const g=(f)=>document.querySelector(`[data-pf="${f}"][data-pid="${pid}"]`);
-  const amount=parseFloat(g('amt').value);
-  if(!(amount>0)){g('amt').focus();return;}
-  p.exp.push({id:uid(),date:g('date').value||todayISO(),cat:g('cat').value,amount,cur:g('cur').value,note:g('note').value.trim()});
   saveState();render();
 }
 
