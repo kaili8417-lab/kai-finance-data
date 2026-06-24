@@ -533,7 +533,10 @@ function render(){
 function renderMonthSel(){
   const sel=document.getElementById('monthSel');
   const months=allMonths();
-  if(!selectedMonth || !months.includes(selectedMonth)) selectedMonth=months[months.length-1];
+  if(!selectedMonth || !months.includes(selectedMonth)){
+    const cur=monthKey(todayISO());
+    selectedMonth = months.includes(cur) ? cur : months[months.length-1];
+  }
   sel.innerHTML=months.map(m=>`<option value="${m}" ${m===selectedMonth?'selected':''}>${monthLabel(m)}</option>`).join('');
 }
 
