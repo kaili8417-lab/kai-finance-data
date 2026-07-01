@@ -1,0 +1,7 @@
+{
+ "asOf": "2026-07",
+ "properties": [
+  {"id": "p2", "name": "1202-5051 Imperial Street", "value": 850000, "loan": 620000, "rate": 0.0375, "pay": 3700},
+  {"id": "p3", "name": "Unit 213-10418 81 Ave", "value": 235000, "loan": 159201, "rate": 0.0445, "pay": 1205.48}
+ ]
+}
